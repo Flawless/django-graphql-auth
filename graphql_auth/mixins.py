@@ -137,8 +137,6 @@ class RegisterMixin(Output):
                 # so we need to run UserStatus.clean_email(email)
                 errors={UserModel.EMAIL_FIELD: Messages.EMAIL_IN_USE},
             )
-        except SMTPException:
-            return cls(success=False, errors=Messages.EMAIL_FAIL)
 
 
 class VerifyAccountMixin(Output):
@@ -224,8 +222,6 @@ class ResendActivationEmailMixin(Output):
             return cls(success=False, errors=f.errors.get_json_data())
         except ObjectDoesNotExist:
             return cls(success=True)  # even if user is not registred
-        except SMTPException:
-            return cls(success=False, errors=Messages.EMAIL_FAIL)
         except UserAlreadyVerified:
             return cls(success=False, errors={"email": Messages.ALREADY_VERIFIED})
 
@@ -260,21 +256,16 @@ class SendPasswordResetEmailMixin(Output):
             return cls(success=False, errors=f.errors.get_json_data())
         except ObjectDoesNotExist:
             return cls(success=True)  # even if user is not registred
-        except SMTPException:
-            return cls(success=False, errors=Messages.EMAIL_FAIL)
         except UserNotVerified:
             user = get_user_by_email(email)
-            try:
-                if async_email_func:
-                    async_email_func(user.status.resend_activation_email, (info,))
-                else:
-                    user.status.resend_activation_email(info)
-                return cls(
-                    success=False,
-                    errors={"email": Messages.NOT_VERIFIED_PASSWORD_RESET},
-                )
-            except SMTPException:
-                return cls(success=False, errors=Messages.EMAIL_FAIL)
+            if async_email_func:
+                async_email_func(user.status.resend_activation_email, (info,))
+            else:
+                user.status.resend_activation_email(info)
+            return cls(
+                success=False,
+                errors={"email": Messages.NOT_VERIFIED_PASSWORD_RESET},
+            )
 
 
 class PasswordResetMixin(Output):
@@ -591,8 +582,6 @@ class SendSecondaryEmailActivationMixin(Output):
             # the email was free. If other account was created with it
             # it is already in use
             return cls(success=False, errors={"email": Messages.EMAIL_IN_USE})
-        except SMTPException:
-            return cls(success=False, errors=Messages.EMAIL_FAIL)
 
 
 class SwapEmailsMixin(Output):
